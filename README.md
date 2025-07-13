@@ -1,6 +1,6 @@
 # Bhagavad Gita Lessons
 
-A Progressive Web App (PWA) designed to deliver daily, bite-sized spiritual lessons from the Bhagavad Gita in Telugu, covering all 18 chapters in a format that blends visual storytelling and guided reflection.
+A Progressive Web App (PWA) designed to deliver daily, bite-sized spiritual lessons from the Bhagavad Gita in Telugu, covering all 18 chapters in a format that blends visual storytelling and guided reflection. Features videos from Pranavananda Das channel.
 
 ## 🌟 Features
 
@@ -76,7 +76,7 @@ Each lesson includes:
 
 ### Lesson Types
 
-1. **Video Lessons** (Days 1-18): All 18 chapters of Bhagavad Gita in Telugu from BhaktiOne channel
+1. **Video Lessons** (Days 1-18): All 18 chapters of Bhagavad Gita in Telugu from Pranavananda Das channel
 2. **Reflection Prompts**: Each lesson includes guided contemplation questions
 
 ## 🎯 Target Audience
