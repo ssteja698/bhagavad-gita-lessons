@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Video Timestamp Test - Bhagavad Gita Lessons</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fef3c7;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .video-container {
+            position: relative;
+            width: 100%;
+            height: 0;
+            padding-bottom: 56.25%;
+            margin: 20px 0;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 8px;
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        .warning { background-color: #fff3cd; color: #856404; }
+        button {
+            padding: 10px 20px;
+            background: #ea580c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #dc2626;
+        }
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 10px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>Video Timestamp Test</h1>
+    
+    <div class="test-section">
+        <h2>How Video Timestamps Work</h2>
+        <p>This feature automatically saves your video progress and resumes from where you left off:</p>
+        <ul>
+            <li>✅ <strong>Auto-save:</strong> Progress is saved every 5 seconds while watching</li>
+            <li>✅ <strong>Resume playback:</strong> Videos start from your last position</li>
+            <li>✅ <strong>Cross-device:</strong> Progress syncs across devices (same browser)</li>
+            <li>✅ <strong>Visual feedback:</strong> Shows "Resumed from X:XX" when returning</li>
+        </ul>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Video (Bhagavad Gita - Day 1)</h2>
+        <div class="progress-info">
+            <span>Video ID: -EslOkQdYo0</span>
+            <button onclick="checkProgress()">Check Saved Progress</button>
+            <button onclick="clearProgress()">Clear Progress</button>
+        </div>
+        <div id="progress-status" class="status info">Checking progress...</div>
+        
+        <div class="video-container">
+            <iframe 
+                id="test-video"
+                src="https://www.youtube.com/embed/-EslOkQdYo0?rel=0&playsinline=1&enablejsapi=1&origin=http://localhost:5173"
+                title="Test Video"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen>
+            </iframe>
+        </div>
+        
+        <div class="test-section">
+            <h3>Instructions:</h3>
+            <ol>
+                <li>Watch the video for a few minutes</li>
+                <li>Close this page or navigate away</li>
+                <li>Come back and reload the page</li>
+                <li>The video should resume from where you left off</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Storage Information</h2>
+        <div id="storage-info" class="status info">Loading...</div>
+    </div>
+
+    <script>
+        const VIDEO_ID = '-EslOkQdYo0';
+        const STORAGE_KEY = 'bhagavad_gita_video_progress';
+
+        function checkProgress() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const statusDiv = document.getElementById('progress-status');
+            
+            if (stored) {
+                const progress = JSON.parse(stored);
+                const videoProgress = progress[VIDEO_ID];
+                
+                if (videoProgress) {
+                    const time = formatTime(videoProgress.timestamp);
+                    const date = new Date(videoProgress.lastWatched).toLocaleString();
+                    statusDiv.innerHTML = `
+                        <strong>✅ Progress Found!</strong><br>
+                        Last position: ${time}<br>
+                        Last watched: ${date}<br>
+                        Watch duration: ${formatTime(videoProgress.watchDuration || 0)}
+                    `;
+                    statusDiv.className = 'status success';
+                } else {
+                    statusDiv.innerHTML = '❌ No progress found for this video';
+                    statusDiv.className = 'status warning';
+                }
+            } else {
+                statusDiv.innerHTML = '❌ No video progress stored';
+                statusDiv.className = 'status warning';
+            }
+        }
+
+        function clearProgress() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('progress-status').innerHTML = '✅ Progress cleared!';
+            document.getElementById('progress-status').className = 'status success';
+            updateStorageInfo();
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            if (hours > 0) {
+                return `${hours}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            }
+            return `${minutes}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        function updateStorageInfo() {
+            const infoDiv = document.getElementById('storage-info');
+            const stored = localStorage.getItem(STORAGE_KEY);
+            
+            if (stored) {
+                const progress = JSON.parse(stored);
+                const videoCount = Object.keys(progress).length;
+                infoDiv.innerHTML = `
+                    <strong>Storage Status:</strong><br>
+                    Videos with progress: ${videoCount}<br>
+                    Storage size: ${(stored.length / 1024).toFixed(2)} KB
+                `;
+                infoDiv.className = 'status success';
+            } else {
+                infoDiv.innerHTML = 'No video progress stored';
+                infoDiv.className = 'status warning';
+            }
+        }
+
+        // Initialize
+        checkProgress();
+        updateStorageInfo();
+
+        // Auto-check every 10 seconds
+        setInterval(() => {
+            checkProgress();
+            updateStorageInfo();
+        }, 10000);
+    </script>
+</body>
+</html> 
