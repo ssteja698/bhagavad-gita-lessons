@@ -13,6 +13,7 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [hasRestoredTimestamp, setHasRestoredTimestamp] = useState(false);
+  const [currentVideoId, setCurrentVideoId] = useState<string>('');
 
   // Load YouTube API and create player
   useEffect(() => {
@@ -24,6 +25,23 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
         await youtubeAPI.loadAPI();
         
         if (!mounted || !containerRef.current || !youtubeId) return;
+
+        // Destroy existing player if video ID changed
+        if (playerRef.current && currentVideoId !== youtubeId) {
+          try {
+            playerRef.current.destroy();
+          } catch (error) {
+            console.error('Error destroying player:', error);
+          }
+          playerRef.current = null;
+        }
+
+        // Reset state for new video
+        setIsPlayerReady(false);
+        setCurrentTime(0);
+        setDuration(0);
+        setHasRestoredTimestamp(false);
+        setCurrentVideoId(youtubeId);
 
         // Get saved timestamp
         const savedTime = getVideoTimestamp(youtubeId);
@@ -42,7 +60,7 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
           },
           events: {
             onReady: (event: any) => {
-              if (!mounted) return;
+              if (!mounted || currentVideoId !== youtubeId) return;
               setIsPlayerReady(true);
               if (savedTime > 0) {
                 event.target.seekTo(savedTime);
@@ -68,12 +86,21 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
 
     return () => {
       mounted = false;
+      // Cleanup player on unmount
+      if (playerRef.current) {
+        try {
+          playerRef.current.destroy();
+        } catch (error) {
+          console.error('Error destroying player on unmount:', error);
+        }
+        playerRef.current = null;
+      }
     };
-  }, [youtubeId]);
+  }, [youtubeId, currentVideoId]);
 
   // Update current time periodically
   useEffect(() => {
-    if (!isPlayerReady) return;
+    if (!isPlayerReady || currentVideoId !== youtubeId) return;
 
     const interval = setInterval(() => {
       if (playerRef.current && playerRef.current.getCurrentTime) {
@@ -94,13 +121,12 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
     }, 1000);
 
     return () => clearInterval(interval);
-  }, [isPlayerReady, youtubeId]);
+  }, [isPlayerReady, youtubeId, currentVideoId]);
 
   const progressData = getVideoProgressData(youtubeId);
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-
 
       {/* Video Player */}
       <div 
