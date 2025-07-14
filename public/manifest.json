@@ -4,7 +4,7 @@
   "description": "A 18-day journey through the timeless wisdom of the Bhagavad Gita in Telugu with Pranavananda Das channel videos",
   "start_url": "/",
   "scope": "/",
-  "display": "standalone",
+  "display": "fullscreen",
   "background_color": "#fef3c7",
   "theme_color": "#ea580c",
   "orientation": "portrait-primary",
