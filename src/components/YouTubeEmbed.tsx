@@ -1,15 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { getVideoTimestamp, saveVideoTimestamp, getVideoProgressData, formatTime } from '../utils/videoProgress';
+import { youtubeAPI } from '../utils/youtubeAPI';
 
 interface YouTubeEmbedProps {
   youtubeId: string;
-}
-
-declare global {
-  interface Window {
-    YT: any;
-    onYouTubeIframeAPIReady: () => void;
-  }
 }
 
 const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
@@ -20,60 +14,62 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
   const [duration, setDuration] = useState(0);
   const [hasRestoredTimestamp, setHasRestoredTimestamp] = useState(false);
 
-  // Load YouTube API
+  // Load YouTube API and create player
   useEffect(() => {
-    if (!window.YT) {
-      const tag = document.createElement('script');
-      tag.src = 'https://www.youtube.com/iframe_api';
-      const firstScriptTag = document.getElementsByTagName('script')[0];
-      firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag);
-    }
+    let mounted = true;
 
-    window.onYouTubeIframeAPIReady = () => {
-      createPlayer();
+    const initializePlayer = async () => {
+      try {
+        // Load YouTube API using singleton manager
+        await youtubeAPI.loadAPI();
+        
+        if (!mounted || !containerRef.current || !youtubeId) return;
+
+        // Get saved timestamp
+        const savedTime = getVideoTimestamp(youtubeId);
+
+        // Create player
+        playerRef.current = new window.YT.Player(containerRef.current, {
+          height: '100%',
+          width: '100%',
+          videoId: youtubeId,
+          playerVars: {
+            rel: 0,
+            playsinline: 1,
+            enablejsapi: 1,
+            origin: window.location.origin,
+            start: savedTime > 0 ? savedTime : 0,
+          },
+          events: {
+            onReady: (event: any) => {
+              if (!mounted) return;
+              setIsPlayerReady(true);
+              if (savedTime > 0) {
+                event.target.seekTo(savedTime);
+                setHasRestoredTimestamp(true);
+              }
+            },
+            onStateChange: (event: any) => {
+              // Save timestamp when video is paused or ended
+              if (event.data === window.YT.PlayerState.PAUSED || 
+                  event.data === window.YT.PlayerState.ENDED) {
+                const currentTime = event.target.getCurrentTime();
+                saveVideoTimestamp(youtubeId, currentTime);
+              }
+            },
+          },
+        });
+      } catch (error) {
+        console.error('Error initializing YouTube player:', error);
+      }
     };
 
-    if (window.YT && window.YT.Player) {
-      createPlayer();
-    }
+    initializePlayer();
+
+    return () => {
+      mounted = false;
+    };
   }, [youtubeId]);
-
-  const createPlayer = () => {
-    if (!containerRef.current) return;
-
-    // Get saved timestamp
-    const savedTime = getVideoTimestamp(youtubeId);
-
-    playerRef.current = new window.YT.Player(containerRef.current, {
-      height: '100%',
-      width: '100%',
-      videoId: youtubeId,
-      playerVars: {
-        rel: 0,
-        playsinline: 1,
-        enablejsapi: 1,
-        origin: window.location.origin,
-        start: savedTime > 0 ? savedTime : 0,
-      },
-      events: {
-        onReady: (event: any) => {
-          setIsPlayerReady(true);
-          if (savedTime > 0) {
-            event.target.seekTo(savedTime);
-            setHasRestoredTimestamp(true);
-          }
-        },
-        onStateChange: (event: any) => {
-          // Save timestamp when video is paused or ended
-          if (event.data === window.YT.PlayerState.PAUSED || 
-              event.data === window.YT.PlayerState.ENDED) {
-            const currentTime = event.target.getCurrentTime();
-            saveVideoTimestamp(youtubeId, currentTime);
-          }
-        },
-      },
-    });
-  };
 
   // Update current time periodically
   useEffect(() => {
@@ -81,14 +77,18 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
 
     const interval = setInterval(() => {
       if (playerRef.current && playerRef.current.getCurrentTime) {
-        const time = playerRef.current.getCurrentTime();
-        const dur = playerRef.current.getDuration();
-        setCurrentTime(time);
-        setDuration(dur);
-        
-        // Save timestamp every 5 seconds
-        if (Math.floor(time) % 5 === 0) {
-          saveVideoTimestamp(youtubeId, time);
+        try {
+          const time = playerRef.current.getCurrentTime();
+          const dur = playerRef.current.getDuration();
+          setCurrentTime(time);
+          setDuration(dur);
+          
+          // Save timestamp every 5 seconds
+          if (Math.floor(time) % 5 === 0) {
+            saveVideoTimestamp(youtubeId, time);
+          }
+        } catch (error) {
+          console.error('Error getting video time:', error);
         }
       }
     }, 1000);
@@ -100,17 +100,7 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
 
   return (
     <div className="relative w-full" style={{ paddingBottom: '56.25%' }}>
-      {/* Progress Indicator */}
-      {progressData && progressData.timestamp > 0 && (
-        <div className="absolute top-2 left-2 z-10 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
-          <div className="flex items-center gap-2">
-            <span>📺 Resumed from {formatTime(progressData.timestamp)}</span>
-            {hasRestoredTimestamp && (
-              <span className="text-green-400">✓</span>
-            )}
-          </div>
-        </div>
-      )}
+
 
       {/* Video Player */}
       <div 
@@ -122,6 +112,13 @@ const YouTubeEmbed: React.FC<YouTubeEmbedProps> = ({ youtubeId }) => {
       {isPlayerReady && (
         <div className="absolute bottom-2 right-2 z-10 bg-black bg-opacity-75 text-white px-2 py-1 rounded text-sm">
           {formatTime(currentTime)} / {formatTime(duration)}
+        </div>
+      )}
+
+      {/* Loading indicator */}
+      {!isPlayerReady && (
+        <div className="absolute inset-0 flex items-center justify-center bg-gray-100 rounded-lg">
+          <div className="text-gray-600">Loading video...</div>
         </div>
       )}
     </div>

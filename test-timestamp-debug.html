@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Timestamp Debug Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #fef3c7;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button {
+            padding: 10px 20px;
+            background: #ea580c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #dc2626;
+        }
+        .log {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 10px;
+            margin: 10px 0;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+<body>
+    <h1>Timestamp Debug Test</h1>
+    
+    <div class="test-section">
+        <h2>Storage Test</h2>
+        <button onclick="testSave()">Test Save Timestamp</button>
+        <button onclick="testLoad()">Test Load Timestamp</button>
+        <button onclick="testClear()">Clear All Data</button>
+        <button onclick="showAllData()">Show All Stored Data</button>
+        
+        <div id="test-results" class="status info">Click a button to test...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Storage Test</h2>
+        <div>
+            <label>Video ID: <input type="text" id="videoId" value="-EslOkQdYo0" /></label>
+        </div>
+        <div>
+            <label>Timestamp (seconds): <input type="number" id="timestamp" value="120" /></label>
+        </div>
+        <button onclick="manualSave()">Manual Save</button>
+        <button onclick="manualLoad()">Manual Load</button>
+        
+        <div id="manual-results" class="status info">Manual test results...</div>
+    </div>
+
+    <div class="test-section">
+        <h2>Console Log</h2>
+        <div id="console-log" class="log"></div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = 'bhagavad_gita_video_progress';
+        
+        // Override console.log to capture logs
+        const originalLog = console.log;
+        const logDiv = document.getElementById('console-log');
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            const logEntry = document.createElement('div');
+            logEntry.textContent = new Date().toLocaleTimeString() + ': ' + args.join(' ');
+            logDiv.appendChild(logEntry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+        };
+
+        function testSave() {
+            const testData = {
+                timestamp: 150,
+                lastWatched: new Date().toISOString(),
+                watchDuration: 300
+            };
+            
+            const progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            progress['test-video-123'] = testData;
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+            
+            document.getElementById('test-results').innerHTML = '✅ Test data saved successfully';
+            document.getElementById('test-results').className = 'status success';
+            console.log('Test save completed');
+        }
+
+        function testLoad() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const resultsDiv = document.getElementById('test-results');
+            
+            if (stored) {
+                const progress = JSON.parse(stored);
+                const testData = progress['test-video-123'];
+                
+                if (testData) {
+                    resultsDiv.innerHTML = `
+                        ✅ Test data loaded successfully<br>
+                        Timestamp: ${testData.timestamp}s<br>
+                        Last watched: ${new Date(testData.lastWatched).toLocaleString()}<br>
+                        Watch duration: ${testData.watchDuration}s
+                    `;
+                    resultsDiv.className = 'status success';
+                } else {
+                    resultsDiv.innerHTML = '❌ Test data not found';
+                    resultsDiv.className = 'status error';
+                }
+            } else {
+                resultsDiv.innerHTML = '❌ No storage data found';
+                resultsDiv.className = 'status error';
+            }
+            console.log('Test load completed');
+        }
+
+        function testClear() {
+            localStorage.removeItem(STORAGE_KEY);
+            document.getElementById('test-results').innerHTML = '✅ All data cleared';
+            document.getElementById('test-results').className = 'status success';
+            console.log('Storage cleared');
+        }
+
+        function showAllData() {
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const resultsDiv = document.getElementById('test-results');
+            
+            if (stored) {
+                const progress = JSON.parse(stored);
+                const videoCount = Object.keys(progress).length;
+                resultsDiv.innerHTML = `
+                    📊 Storage Summary<br>
+                    Videos with progress: ${videoCount}<br>
+                    Storage size: ${(stored.length / 1024).toFixed(2)} KB<br>
+                    <pre style="font-size: 10px; margin-top: 10px;">${JSON.stringify(progress, null, 2)}</pre>
+                `;
+                resultsDiv.className = 'status info';
+            } else {
+                resultsDiv.innerHTML = '❌ No data found';
+                resultsDiv.className = 'status error';
+            }
+            console.log('All data displayed');
+        }
+
+        function manualSave() {
+            const videoId = document.getElementById('videoId').value;
+            const timestamp = parseInt(document.getElementById('timestamp').value);
+            
+            if (!videoId || isNaN(timestamp)) {
+                document.getElementById('manual-results').innerHTML = '❌ Invalid input';
+                document.getElementById('manual-results').className = 'status error';
+                return;
+            }
+            
+            const progress = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+            progress[videoId] = {
+                timestamp: timestamp,
+                lastWatched: new Date().toISOString(),
+                watchDuration: timestamp
+            };
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
+            
+            document.getElementById('manual-results').innerHTML = `✅ Saved ${timestamp}s for video ${videoId}`;
+            document.getElementById('manual-results').className = 'status success';
+            console.log(`Manual save: ${videoId} at ${timestamp}s`);
+        }
+
+        function manualLoad() {
+            const videoId = document.getElementById('videoId').value;
+            const stored = localStorage.getItem(STORAGE_KEY);
+            const resultsDiv = document.getElementById('manual-results');
+            
+            if (stored) {
+                const progress = JSON.parse(stored);
+                const data = progress[videoId];
+                
+                if (data) {
+                    resultsDiv.innerHTML = `
+                        ✅ Found data for ${videoId}<br>
+                        Timestamp: ${data.timestamp}s<br>
+                        Last watched: ${new Date(data.lastWatched).toLocaleString()}
+                    `;
+                    resultsDiv.className = 'status success';
+                } else {
+                    resultsDiv.innerHTML = `❌ No data found for ${videoId}`;
+                    resultsDiv.className = 'status error';
+                }
+            } else {
+                resultsDiv.innerHTML = '❌ No storage data found';
+                resultsDiv.className = 'status error';
+            }
+            console.log(`Manual load: ${videoId}`);
+        }
+
+        // Initialize
+        console.log('Timestamp debug test initialized');
+        showAllData();
+    </script>
+</body>
+</html> 
